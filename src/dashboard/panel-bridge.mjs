@@ -56,7 +56,7 @@ export function connectPanelHost({window, onResult, onReady, onError, requestPre
     close,
   };
   request('ui/initialize', {
-    appInfo:{name:'YouTube Dashboard',version:'0.3.0'},
+    appInfo:{name:'YouTube Dashboard',version:'0.3.1'},
     appCapabilities:{availableDisplayModes:['inline','fullscreen']},
     protocolVersion:'2026-01-26',
   }, 15000).then(result => {

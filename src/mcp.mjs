@@ -4,7 +4,7 @@ import { layoutSchema } from './layout.mjs';
 import { requirePrincipal } from './auth/identity.mjs';
 import { REPORTS as REPORT_DEFINITIONS } from './dashboard/report-catalog.mjs';
 
-export const PANEL_URI='ui://youtube-dashboard/panel-v4.html';
+export const PANEL_URI='ui://youtube-dashboard/panel-v5.html';
 const html=panelHtml();
 const string={type:'string',minLength:1,maxLength:128};
 function tool(name,title,description,properties,required,write=false,destructive=false){return {name,title,description,inputSchema:{type:'object',properties,required,additionalProperties:false},annotations:{readOnlyHint:!write,destructiveHint:destructive,openWorldHint:false},securitySchemes:[{type:'oauth2',scopes:[write?'dashboard:manage':'dashboard:read']}]};}
@@ -43,14 +43,14 @@ export async function handleMcp(service,principal,message,options={}){
  const reply=result=>({jsonrpc:'2.0',id:message.id,result});
  const metadata=result=>({...result,resultType:'complete',ttlMs:0,cacheScope:'private'});
  const tools=options.sites?SITES_TOOLS:TOOLS;
- if(method==='initialize')return reply({protocolVersion:['2026-07-28','2025-11-25','2025-06-18'].includes(params.protocolVersion)?params.protocolVersion:'2025-11-25',capabilities:{tools:{},resources:{}},serverInfo:{name:'youtube-dashboard',version:'0.3.0'}});
- if(method==='server/discover')return reply({supportedVersions:['2026-07-28'],capabilities:{tools:{},resources:{}},serverInfo:{name:'youtube-dashboard',version:'0.3.0'}});
+ if(method==='initialize')return reply({protocolVersion:['2026-07-28','2025-11-25','2025-06-18'].includes(params.protocolVersion)?params.protocolVersion:'2025-11-25',capabilities:{tools:{},resources:{}},serverInfo:{name:'youtube-dashboard',version:'0.3.1'}});
+ if(method==='server/discover')return reply({supportedVersions:['2026-07-28'],capabilities:{tools:{},resources:{}},serverInfo:{name:'youtube-dashboard',version:'0.3.1'}});
  if(method==='ping')return reply({});
  if(method==='tools/list')return reply(metadata({tools}));
  if(method==='resources/list')return reply(metadata({resources:[{uri:PANEL_URI,name:'youtube-dashboard',mimeType:'text/html;profile=mcp-app'}]}));
  if(method==='resources/templates/list')return reply(metadata({resourceTemplates:[]}));
  if(method==='resources/read'){
-   if(![PANEL_URI,'ui://youtube-dashboard/panel-v3.html','ui://youtube-dashboard/panel-v2.html','ui://youtube-dashboard/panel-v1.html'].includes(params.uri))return {jsonrpc:'2.0',id:message.id,error:{code:-32602,message:'Unknown resource'}};
+   if(![PANEL_URI,'ui://youtube-dashboard/panel-v4.html','ui://youtube-dashboard/panel-v3.html','ui://youtube-dashboard/panel-v2.html','ui://youtube-dashboard/panel-v1.html'].includes(params.uri))return {jsonrpc:'2.0',id:message.id,error:{code:-32602,message:'Unknown resource'}};
    return reply(metadata({contents:[{uri:params.uri,mimeType:'text/html;profile=mcp-app',text:html,_meta:{ui:{csp:{connectDomains:[],resourceDomains:['https://i.ytimg.com'],frameDomains:[]}},'openai/widgetCSP':{connect_domains:[],resource_domains:['https://i.ytimg.com']}}}]}));
  }
  if(method!=='tools/call')return {jsonrpc:'2.0',id:message.id,error:{code:-32601,message:'Method not found'}};

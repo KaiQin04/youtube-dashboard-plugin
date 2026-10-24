@@ -1,6 +1,7 @@
 import { AppError } from './errors.mjs';
 import { sha256 } from './crypto.mjs';
 import { readJson } from './http-json.mjs';
+import { isProviderBudgetError } from './provider-budget.mjs';
 
 export const GOOGLE_SCOPES = Object.freeze([
   'https://www.googleapis.com/auth/youtube.readonly',
@@ -29,7 +30,7 @@ export class GoogleClient {
     let response;
     try {
       response = await this.#fetch('https://oauth2.googleapis.com/token', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({ ...fields, client_id:this.#config.googleClientId, client_secret:this.#config.googleClientSecret }), redirect:'manual', signal:AbortSignal.timeout(15000) });
-    } catch { throw new AppError('OAUTH_UPSTREAM_UNAVAILABLE', 'Google authorization is temporarily unavailable.', 502); }
+    } catch (error) { if (isProviderBudgetError(error)) throw error; throw new AppError('OAUTH_UPSTREAM_UNAVAILABLE', 'Google authorization is temporarily unavailable.', 502); }
     if (!response.ok || response.redirected) {
       let invalidGrant = false;
       try { invalidGrant = response.status === 400 && (await readJson(response,32768)).error === 'invalid_grant'; } catch {}
@@ -49,7 +50,7 @@ export class GoogleClient {
       url.search = new URLSearchParams({ part:'id,snippet',mine:'true',maxResults:'50',...(pageToken ? {pageToken} : {}) }).toString();
       let response;
       try { response = await this.#fetch(url,{method:'GET',headers:{Authorization:`Bearer ${accessToken}`},redirect:'manual',signal:AbortSignal.timeout(15000)}); }
-      catch { throw new AppError('CHANNEL_CHECK_FAILED','Could not verify authorized channels.',502); }
+      catch (error) { if (isProviderBudgetError(error)) throw error; throw new AppError('CHANNEL_CHECK_FAILED','Could not verify authorized channels.',502); }
       if (!response.ok || response.redirected) { await response.body?.cancel(); throw new AppError('CHANNEL_CHECK_FAILED','Could not verify authorized channels.',502); }
       const data = await readJson(response);
       if (!Array.isArray(data.items) || data.items.length>50) throw new AppError('UPSTREAM_INVALID','Invalid channel response.',502);

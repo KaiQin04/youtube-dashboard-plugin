@@ -10,6 +10,6 @@ export class AppError extends Error {
 
 export function safeError(error) {
   return { error: error instanceof AppError
-    ? { code: error.code, message: error.message }
+    ? { code: error.code, message: error.message, ...(Number.isSafeInteger(error.retryAfterSeconds) ? { retryAfterSeconds: error.retryAfterSeconds } : {}) }
     : { code: 'INTERNAL_ERROR', message: 'The operation could not be completed.' } };
 }

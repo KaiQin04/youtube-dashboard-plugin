@@ -4,6 +4,7 @@ import {readReport} from './reports.mjs';
 import {readJson} from '../http-json.mjs';
 import {readDashboardReports} from './dashboard-reports.mjs';
 import {normalizeSourceVideos,safeSourceThumbnail,validSourceVideoId} from '../dashboard/source-videos.mjs';
+import { isProviderBudgetError } from '../provider-budget.mjs';
 
 const CHANNEL = /^UC[A-Za-z0-9_-]{22}$/;
 const VIDEO = /^[A-Za-z0-9_-]{11}$/;
@@ -80,7 +81,7 @@ export class YouTubeSnapshotAdapter {
     let response, refreshed=false;
     for(let attempt=0;attempt<3;attempt++) {
       if(++this.requestCount>900||Date.now()>this.deadline)throw new AppError('SYNC_BUDGET_EXCEEDED','Sync request or time limit reached; previous data was preserved.',409);
-      try {response=await this.fetchImpl(url,{method:'GET',headers:{Authorization:`Bearer ${token}`,Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(15000)});} catch {throw new AppError('UPSTREAM_UNAVAILABLE',`YouTube request failed (stage=${stage}, transport_error). No snapshot was saved.`,502);}
+      try {response=await this.fetchImpl(url,{method:'GET',headers:{Authorization:`Bearer ${token}`,Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(15000)});} catch (error) {if(isProviderBudgetError(error))throw error;throw new AppError('UPSTREAM_UNAVAILABLE',`YouTube request failed (stage=${stage}, transport_error). No snapshot was saved.`,502);}
       if(this.refreshOnUnauthorized&&!response.redirected&&response.status===401&&!refreshed&&attempt<2){
         await response.body?.cancel();
         token=await this.#accessToken(true);refreshed=true;continue;
@@ -90,7 +91,10 @@ export class YouTubeSnapshotAdapter {
       await new Promise(resolve=>setTimeout(resolve,250*2**attempt));
     }
     // Only fixed stage labels and numeric status leave the server. Never echo provider bodies or URLs.
-    if(!response.ok || response.redirected) throw new AppError(analytics===true&&response.status===400?'UNSUPPORTED_REPORT':response.status===401?this.unauthorizedCode:response.status===403?'UPSTREAM_FORBIDDEN':response.status===429?'UPSTREAM_RATE_LIMITED':'UPSTREAM_UNAVAILABLE',`YouTube request failed (stage=${stage}, HTTP=${response.status}). No snapshot was saved.`,502);
+    if(!response.ok || response.redirected) {
+      await response.body?.cancel().catch(() => {});
+      throw new AppError(analytics===true&&response.status===400?'UNSUPPORTED_REPORT':response.status===401?this.unauthorizedCode:response.status===403?'UPSTREAM_FORBIDDEN':response.status===429?'UPSTREAM_RATE_LIMITED':'UPSTREAM_UNAVAILABLE',`YouTube request failed (stage=${stage}, HTTP=${response.status}). No snapshot was saved.`,502);
+    }
     // Keep parsed upstream size bounded, without echoing provider error bodies.
     try {
       return await readJson(response,2_000_000);
@@ -152,7 +156,7 @@ export class YouTubeSnapshotAdapter {
       report.sourceVideos=normalizeSourceVideos(items,report.rows);
       report.sourceMetadataStatus=report.sourceVideos.length===ids.length?'available':'partial';
     }catch(error){
-      if(['UPSTREAM_UNAUTHORIZED','REAUTH_REQUIRED','OAUTH_NOT_CONNECTED','SYNC_BUDGET_EXCEEDED'].includes(error.code))throw error;
+      if(isProviderBudgetError(error)||['UPSTREAM_UNAUTHORIZED','REAUTH_REQUIRED','OAUTH_NOT_CONNECTED','SYNC_BUDGET_EXCEEDED'].includes(error.code))throw error;
       report.sourceMetadataStatus='unavailable';
     }
     return report;

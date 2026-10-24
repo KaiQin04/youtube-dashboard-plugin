@@ -1,5 +1,17 @@
 import { foreignKey, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+export const providerUsage = sqliteTable("provider_usage", {
+  scope: text("scope").primaryKey(),
+  used: integer("used").notNull(),
+  resetAt: integer("reset_at").notNull(),
+});
+
+export const providerPermits = sqliteTable("provider_permits", {
+  id: text("id").primaryKey(),
+  expiresAt: integer("expires_at").notNull(),
+  active: integer("active").notNull(),
+});
+
 export const connections = sqliteTable("connections", {
   userId: text("user_id").notNull(),
   id: text("id").notNull(),

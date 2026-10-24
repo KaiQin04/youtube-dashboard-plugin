@@ -40,7 +40,7 @@ try {
     if (buffer.length) await line(buffer);
     await close();
   } else {
-    console.log('Local YouTube Dashboard: ' + runtime.url);
+    console.log('Local YouTube Dashboard: ' + runtime.launchUrl());
     console.log('Enter Google OAuth settings only in your own browser. Press Ctrl+C to stop before starting the Plugin.');
   }
 } catch {

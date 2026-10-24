@@ -51,13 +51,15 @@
     const frame = $('panel'), message = event.data;
     if (event.source !== frame.contentWindow || event.origin !== location.origin || message?.jsonrpc !== '2.0' || !Object.hasOwn(message, 'id')) return;
     try {
-      const result = message.method === 'ui/initialize' ? { jsonrpc: '2.0', id: message.id, result: { protocolVersion: '2026-01-26', hostInfo: { name: 'youtube-dashboard-local', version: '0.3.0' }, hostCapabilities: { serverTools: {} }, hostContext: { theme: 'light' } } } : await api('/browser/rpc', message);
+      const result = message.method === 'ui/initialize' ? { jsonrpc: '2.0', id: message.id, result: { protocolVersion: '2026-01-26', hostInfo: { name: 'youtube-dashboard-local', version: '0.3.1' }, hostCapabilities: { serverTools: {} }, hostContext: { theme: 'light' } } } : await api('/browser/rpc', message);
       const layout = message.params?.name === 'get_youtube_dashboard' ? result.result?.structuredContent?.layout : message.params?.name === 'update_dashboard_layout' ? result.result?.structuredContent : null;
       if (layout) applyBrand(document, layout);
       if (event.source === frame.contentWindow) event.source.postMessage(result, location.origin);
     } catch { event.source.postMessage({ jsonrpc: '2.0', id: message.id, error: { code: -32603, message: 'Local dashboard request failed.' } }, location.origin); }
   });
+  const access = new URLSearchParams(location.hash.slice(1)).get('access');
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   const params = new URL(location.href).searchParams;
   if (params.has('notice')) { notice(params.get('notice') === 'YOUTUBE_CONNECTED' ? 'Authorized. Verify the channel ID before syncing.' : 'Authorization did not complete. Start again from Connect YouTube.'); history.replaceState(null, '', '/'); }
-  applyBrand(document, {}); run(refresh);
+  applyBrand(document, {}); run(async () => { if (access) await api('/api/local/unlock', { token: access }); await refresh(); });
 })();

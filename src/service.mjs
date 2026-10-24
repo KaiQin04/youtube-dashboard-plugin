@@ -15,6 +15,7 @@ import { loadLayout, validateLayout } from './layout.mjs';
 import { dashboardData } from './dashboard-data.mjs';
 import { validateReportRequest } from './analytics/reports.mjs';
 import { reportKey } from './dashboard/report-catalog.mjs';
+import { isProviderBudgetError } from './provider-budget.mjs';
 
 function configuration(config) {
   applicationOrigin(config);
@@ -30,6 +31,32 @@ export class DashboardService {
     this.#google=new GoogleClient(config,fetchImpl); this.#now=now; this.#fetch=fetchImpl;
   }
   #context(row,purpose='grant') { return [row.user_id,row.id,purpose,row.channel_id ?? 'unselected']; }
+  #providerFetch(userId, channelId = null) {
+    return async (input, options) => {
+      const permit = await this.#store.reserveProviderWork({ userId, channelId, kind: 'request', now: this.#now() });
+      let released = false;
+      const release = async () => { if (!released) { released = true; await this.#store.releaseProviderWork(permit); } };
+      let response;
+      try { response = await this.#fetch(input, options); }
+      catch (error) { await release(); throw error; }
+      if (!response.body) { await release(); return response; }
+      const reader = response.body.getReader();
+      const body = new ReadableStream({
+        async pull(controller) {
+          try {
+            const { done, value } = await reader.read();
+            if (done) { await release(); reader.releaseLock(); controller.close(); }
+            else controller.enqueue(value);
+          } catch (error) { await release(); reader.releaseLock(); controller.error(error); }
+        },
+        async cancel(reason) { try { await reader.cancel(reason); } finally { await release(); reader.releaseLock(); } },
+      });
+      const result = new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+      Object.defineProperties(result, { redirected: { value: response.redirected }, url: { value: response.url } });
+      return result;
+    };
+  }
+  #client(userId, channelId = null) { return new GoogleClient(this.#config, this.#providerFetch(userId, channelId)); }
   async #row(principal,id,scope='dashboard:read') {
     const userId=requirePrincipal(principal,scope);
     if (typeof id!=='string' || !/^[A-Za-z0-9_-]{43}$/.test(id)) throw new AppError('NOT_FOUND','Connection not found.',404);
@@ -70,8 +97,9 @@ export class DashboardService {
     if (!pending) throw new AppError('INVALID_STATE','Invalid or expired authorization state.');
     if (url.searchParams.has('error') || url.searchParams.getAll('code').length!==1 || !url.searchParams.get('code') || url.searchParams.get('code').length>8192) throw new AppError('AUTHORIZATION_NOT_COMPLETED','Google authorization was not completed.');
     const {verifier}=this.#vault.open(pending.payload_cipher,[pending.user_id,pending.connection_id,'oauth-state']);
-    const token=await this.#google.token({grant_type:'authorization_code',code:url.searchParams.get('code'),code_verifier:verifier,redirect_uri:this.#config.publicOrigin+'/oauth/google/callback'});
-    const channels=await this.#google.channels(token.accessToken);
+    const client=this.#client(pending.user_id);
+    const token=await client.token({grant_type:'authorization_code',code:url.searchParams.get('code'),code_verifier:verifier,redirect_uri:this.#config.publicOrigin+'/oauth/google/callback'});
+    const channels=await client.channels(token.accessToken);
     const row=await this.#store.get(pending.user_id,pending.connection_id);
     const grant=this.#vault.seal({...token,expiresAt:this.#now()+token.expiresIn*1000},this.#context(row));
     await this.#store.complete(row.user_id,row.id,channels,grant,this.#now());
@@ -135,7 +163,8 @@ export class DashboardService {
       const key = JSON.stringify([args.reportId, args.videoId ?? null, args.startDate, args.endDate]);
       const previous = snapshot.reportCache?.[key];
       if (previous?.observedAt && this.#now() - Date.parse(previous.observedAt) < 60000) return { ...previous, refreshSkipped: 'recently_updated' };
-      const adapter = new YouTubeSnapshotAdapter({ channelId: row.channel_id, tokenStore: { getAccessToken: () => this.#accessToken(row) }, fetchImpl: this.#fetch, now: () => new Date(this.#now()) });
+      await this.#store.reserveProviderWork({ userId: row.user_id, channelId: row.channel_id, kind: 'report', now: this.#now() });
+      const adapter = new YouTubeSnapshotAdapter({ channelId: row.channel_id, tokenStore: { getAccessToken: () => this.#accessToken(row) }, fetchImpl: this.#providerFetch(row.user_id, row.channel_id), now: () => new Date(this.#now()) });
       await adapter.verifyOwnedChannel();
       if (definition.video) await adapter.verifyReportVideo(args.videoId);
       const report = await adapter.readDashboardReport(args);
@@ -164,8 +193,9 @@ export class DashboardService {
       row=await this.#store.get(row.user_id,row.id);
       grant=this.#vault.open(row.grant_cipher,this.#context(row));
       if (grant.expiresAt>this.#now()+60000) return grant.accessToken;
-      const refreshed=await this.#google.token({grant_type:'refresh_token',refresh_token:grant.refreshToken},grant);
-      const channels=await this.#google.channels(refreshed.accessToken);
+      const client=this.#client(row.user_id,row.channel_id);
+      const refreshed=await client.token({grant_type:'refresh_token',refresh_token:grant.refreshToken},grant);
+      const channels=await client.channels(refreshed.accessToken);
       if (!channels.some(channel=>channel.id===row.channel_id)) throw new AppError('REAUTH_REQUIRED','The bound channel is no longer accessible.',401);
       await this.#store.replaceGrant(row.user_id,row.id,row.version,this.#vault.seal({...refreshed,expiresAt:this.#now()+refreshed.expiresIn*1000},this.#context(row)),lease,this.#now());
       return refreshed.accessToken;
@@ -184,18 +214,19 @@ export class DashboardService {
     const lease=await this.#store.acquire(row.user_id,id,'sync',randomString(),this.#now(),600000);
     try {
       const previous=await this.#store.snapshot(row.user_id,id);
-      if (previous && this.#now()-Date.parse(JSON.parse(previous).lastSyncedAt)<900000) throw new AppError('REFRESH_COOLDOWN','Wait fifteen minutes between successful synchronizations.',429);
+      if (previous && this.#now()-Date.parse(JSON.parse(previous).lastSyncedAt)<900000) throw new AppError('REFRESH_COOLDOWN','Wait fifteen minutes between synchronization attempts.',429);
+      await this.#store.reserveProviderWork({ userId: row.user_id, channelId: row.channel_id, kind: 'sync', now: this.#now() });
       const adapter=new YouTubeSnapshotAdapter({channelId:row.channel_id,tokenStore:{getAccessToken:channelId=>{
         if (channelId!==row.channel_id) throw new AppError('CHANNEL_FORBIDDEN','The token is bound to another channel.',403);
         return this.#accessToken(row);
-      }},fetchImpl:this.#fetch,now:()=>new Date(this.#now()),allVideos:true});
+      }},fetchImpl:this.#providerFetch(row.user_id,row.channel_id),now:()=>new Date(this.#now()),allVideos:true});
       const incoming=await adapter.fetchSnapshot(range);
       const snapshot=normalizeSnapshot(incoming,{now:new Date(this.#now())});
       snapshot.coverage=normalizeCoverage(incoming.coverage);
       try {
         const summaryRange={startDate:range.startDate,endDate:snapshot.completeThrough};
         snapshot.nativeSummary={...summaryRange,totals:await adapter.readNativeSummary(summaryRange)};
-      } catch(error) { if(error instanceof AppError&&error.code==='REAUTH_REQUIRED')throw error;snapshot.nativeSummary=null; }
+      } catch(error) { if(isProviderBudgetError(error)||error instanceof AppError&&error.code==='REAUTH_REQUIRED')throw error;snapshot.nativeSummary=null; }
       snapshot.dashboardReports=await adapter.readDashboardReports({startDate:range.startDate,endDate:snapshot.completeThrough});
       const saved = previous ? JSON.parse(previous) : null;
       if (saved?.channel?.id === row.channel_id && saved.reportCache) {
@@ -226,7 +257,7 @@ export class DashboardService {
     await this.#store.remove(row.user_id,id);
     let googleRevoked=false;
     if (row.grant_cipher) {
-      try { googleRevoked=await this.#google.revoke(this.#vault.open(row.grant_cipher,this.#context(row)).refreshToken); }
+      try { googleRevoked=await this.#client(row.user_id,row.channel_id).revoke(this.#vault.open(row.grant_cipher,this.#context(row)).refreshToken); }
       catch {}
     }
     return {localDataDeleted:true,googleRevoked,revocationStatus:row.grant_cipher?(googleRevoked?'confirmed':'unconfirmed'):'no_stored_grant'};

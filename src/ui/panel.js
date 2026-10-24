@@ -48,7 +48,7 @@ async function loadConnections() {
   const result = await call('list_youtube_connections');
   if (result.setupUrl) {
     const url = new URL(result.setupUrl);
-    if (url.protocol === 'http:' && url.hostname === '127.0.0.1' && url.port && url.pathname === '/' && !url.username && !url.password && !url.search && !url.hash) {
+    if (url.protocol === 'http:' && url.hostname === '127.0.0.1' && url.port && url.pathname === '/' && !url.username && !url.password && !url.search && (!url.hash || /^#access=[A-Za-z0-9_-]{43}$/.test(url.hash))) {
       $('setup-link').href = url.href; $('setup-link').hidden = false;
     }
   }

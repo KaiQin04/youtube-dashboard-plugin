@@ -10,7 +10,7 @@ With Node.js 24+, run this from the extracted release package or a source checko
 npm run setup
 ```
 
-Open the printed URL in your system browser, normally `http://127.0.0.1:4318/`.
+Open the complete one-time URL printed by Setup in your system browser. It is valid for five minutes; use Setup or the Plugin to get a fresh link when needed.
 
 ## Create a Google OAuth client
 

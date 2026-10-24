@@ -1,4 +1,5 @@
 import { AppError } from './errors.mjs';
+import { providerReservation, requireProviderReservation } from './provider-budget.mjs';
 
 /** D1 storage for a pre-migrated binding; every connection operation is tenant-scoped. */
 export class D1Store {
@@ -10,6 +11,14 @@ export class D1Store {
   }
 
   #statement(sql, ...values) { return this.#db.prepare(sql).bind(...values); }
+
+  async reserveProviderWork(args) {
+    const reservation = providerReservation(args);
+    const results = await this.#db.batch(reservation.statements.map(({ sql, values }) => this.#statement(sql, ...values)));
+    return requireProviderReservation(reservation, results);
+  }
+
+  async releaseProviderWork(id) { await this.#statement('DELETE FROM provider_permits WHERE id=?', id).run(); }
 
   async prune(now) {
     await this.#db.batch([

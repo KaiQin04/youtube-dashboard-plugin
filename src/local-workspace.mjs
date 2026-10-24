@@ -47,8 +47,15 @@ export async function startLocalWorkspace({ directory, port = Number(process.env
   for (const suffix of ['', '-wal', '-shm']) profile.check('dashboard.sqlite' + suffix);
   const store = new SqliteStore(profile.path('dashboard.sqlite'));
   chmodSync(profile.path('dashboard.sqlite'), 0o600);
-  const sessionId = randomString(), csrf = randomString();
+  const sessionId = randomString(), csrf = randomString(), launches = new Map();
   let runtime, service;
+  const launchUrl = () => {
+    for (const [key, expires] of launches) if (expires <= now()) launches.delete(key);
+    while (launches.size >= 32) launches.delete(launches.keys().next().value);
+    const token = randomString();
+    launches.set(token, now() + 300000);
+    return runtime.url + '/#access=' + token;
+  };
   const configured = () => {
     const config = profile.configuration(runtime?.url || 'http://127.0.0.1:4318');
     return Boolean(config.googleClientId && config.googleClientSecret);
@@ -59,7 +66,7 @@ export async function startLocalWorkspace({ directory, port = Number(process.env
     service ??= new DashboardService({ store, config: profile.configuration(runtime.url), fetchImpl, now });
     return service;
   };
-  const rpc = async message => {
+  const rpc = async (message, trusted = true) => {
     if (message?.method === 'tools/list') return { jsonrpc: '2.0', id: message.id, result: { tools: localTools } };
     if (message?.method === 'tools/call') {
       try {
@@ -67,8 +74,8 @@ export async function startLocalWorkspace({ directory, port = Number(process.env
         if (['open_youtube_dashboard', 'get_local_setup_status', 'list_youtube_connections'].includes(name)) {
           if (!args || typeof args !== 'object' || Array.isArray(args) || Object.keys(args).length) throw new AppError('INVALID_ARGUMENTS', 'No arguments are accepted.');
           const ready = configured();
-          const result = name === 'open_youtube_dashboard' ? { url: runtime.url, configurationReady: ready }
-            : name === 'list_youtube_connections' ? { connections: ready ? await getService().listConnections(principal) : [], configurationReady: ready, setupUrl: runtime.url }
+          const result = name === 'open_youtube_dashboard' ? { url: trusted ? launchUrl() : runtime.url, configurationReady: ready }
+            : name === 'list_youtube_connections' ? { connections: ready ? await getService().listConnections(principal) : [], configurationReady: ready, setupUrl: trusted ? launchUrl() : runtime.url }
             : status();
           return { jsonrpc: '2.0', id: message.id, result: { structuredContent: result, content: [{ type: 'text', text: JSON.stringify(result) }] } };
         }
@@ -87,20 +94,28 @@ export async function startLocalWorkspace({ directory, port = Number(process.env
         const sessionName = 'ytd-local-session-' + new URL(origin).port;
         const session = cookie(request, sessionName) === sessionId;
         if (request.method === 'GET' && ['/', '/setup'].includes(url.pathname)) {
-          return new Response(readFileSync(new URL('./ui/local.html', import.meta.url), 'utf8'), { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': hostPolicy, 'Set-Cookie': sessionName + '=' + sessionId + '; Path=/; HttpOnly; SameSite=Lax' } });
+          return new Response(readFileSync(new URL('./ui/local.html', import.meta.url), 'utf8'), { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': hostPolicy } });
         }
         if (request.method === 'GET' && url.pathname === '/assets/local.js') {
           const branding = readFileSync(new URL('./dashboard/branding.mjs', import.meta.url), 'utf8').replace(/^export /gm, '');
           return new Response(branding + '\n' + readFileSync(new URL('./ui/local.js', import.meta.url), 'utf8'), { headers: { ...headers, 'Content-Type': 'text/javascript; charset=utf-8' } });
         }
         if (request.method === 'GET' && url.pathname === '/assets/web.css') { const asset = webResource(url.pathname); return new Response(asset.body, { headers: { ...headers, 'Content-Type': asset.type } }); }
-        if (!session) throw new AppError('LOCAL_SESSION', 'Open this local dashboard in your own browser first.', 401);
+        if (request.method === 'POST' && url.pathname === '/api/local/unlock') {
+          if (request.headers.get('origin') !== origin) throw new AppError('CSRF_REJECTED', 'Open the dashboard link from your local launcher.', 403);
+          const args = await body(request);
+          const valid = args && Object.keys(args).length === 1 && typeof args.token === 'string' && /^[A-Za-z0-9_-]{43}$/.test(args.token) && launches.get(args.token) > now();
+          if (!valid) throw new AppError('LOCAL_SESSION', 'Open a fresh dashboard link from Setup or the Plugin.', 401);
+          launches.delete(args.token);
+          return new Response('{}', { headers: { ...headers, 'Content-Type': 'application/json', 'Set-Cookie': sessionName + '=' + sessionId + '; Path=/; HttpOnly; SameSite=Lax' } });
+        }
+        if (!session) throw new AppError('LOCAL_SESSION', 'Open a fresh dashboard link from Setup or the Plugin.', 401);
         if (request.method !== 'GET' && (request.headers.get('origin') !== origin || request.headers.get('x-csrf-token') !== csrf)) throw new AppError('CSRF_REJECTED', 'Reload the local dashboard.', 403);
         if (request.method === 'GET' && url.pathname === '/api/session') return json({ authenticated: true, authMode: 'local', accountLabel: 'Local workspace', csrfToken: csrf, ...status() });
         if (request.method === 'POST' && url.pathname === '/api/local/config') { const result = profile.saveGoogle(await body(request)); service = undefined; return json(result); }
         if (request.method === 'GET' && url.pathname === '/panel') { const asset = webResource('/panel'); return new Response(asset.body, { headers: { ...headers, 'Content-Type': asset.type, 'Content-Security-Policy': asset.policy } }); }
         if (request.method === 'GET' && url.pathname === '/api/connections') return json({ connections: configured() ? await getService().listConnections(principal) : [] });
-        if (request.method === 'POST' && url.pathname === '/browser/rpc') return json(await rpc(await body(request)));
+        if (request.method === 'POST' && url.pathname === '/browser/rpc') return json(await rpc(await body(request), false));
         if (request.method === 'POST' && url.pathname === '/oauth/google/start') {
           const args = await body(request);
           if (!args || args.acceptedPrivacy !== true || Object.keys(args).some(k => k !== 'acceptedPrivacy')) throw new AppError('PRIVACY_ACKNOWLEDGEMENT_REQUIRED', 'Read the local data notice before authorizing.');
@@ -118,5 +133,5 @@ export async function startLocalWorkspace({ directory, port = Number(process.env
       } catch (error) { return json(safeError(error), error instanceof AppError ? error.status : 500); }
     } });
   } catch (error) { store.close(); throw error; }
-  return { url: runtime.url, status, rpc, close: async () => { await runtime.close(); store.close(); } };
+  return { url: runtime.url, launchUrl, status, rpc, close: async () => { launches.clear(); await runtime.close(); store.close(); } };
 }

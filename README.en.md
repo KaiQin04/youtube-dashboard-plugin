@@ -30,7 +30,7 @@ Start Setup from the application folder:
 npm run setup
 ```
 
-Open the printed URL in your system browser, normally `http://127.0.0.1:4318/`. Complete Google OAuth below, then stop the foreground setup server with Ctrl+C and install the Plugin:
+Open the complete one-time URL printed by Setup in your system browser. It is valid for five minutes; use Setup or the Plugin to get a fresh link when needed. Complete Google OAuth below, then stop the foreground setup server with Ctrl+C and install the Plugin:
 
 ```sh
 codex plugin marketplace add .

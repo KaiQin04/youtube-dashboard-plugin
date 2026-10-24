@@ -30,7 +30,7 @@ npm ci --ignore-scripts --no-audit --no-fund
 npm run setup
 ```
 
-在系統瀏覽器開啟終端顯示的網址，預設為 `http://127.0.0.1:4318/`。完成下方 Google OAuth 設定後，按 Ctrl+C 停止設定服務，再安裝 Plugin：
+在系統瀏覽器開啟終端顯示的完整一次性網址。連結有效五分鐘，需要時可透過設定服務或 Plugin 取得新連結。完成下方 Google OAuth 設定後，按 Ctrl+C 停止設定服務，再安裝 Plugin：
 
 ```sh
 codex plugin marketplace add .

@@ -2,13 +2,17 @@
 
 ## Local Plugin boundary
 
-The local Plugin uses a single-owner OS profile and a numeric-loopback HTTP workspace. It does not import another project's environment or credentials. Local stdio tools and browser requests resolve ownership from that profile, never caller-supplied IDs. HttpOnly cookies and CSRF protect browser writes; Google callbacks also bind one-use state, PKCE and browser nonce.
+The local Plugin uses a single-owner OS profile and a numeric-loopback HTTP workspace. It does not import another project's environment or credentials. Local stdio tools and browser requests resolve ownership from that profile, never caller-supplied IDs. A trusted local launcher issues a one-use, five-minute link; the browser removes its fragment and exchanges the capability for an HttpOnly session cookie. Bare loopback requests cannot create a session. Origin and CSRF protect browser writes; Google callbacks also bind one-use state, PKCE and browser nonce.
 
 The profile directory/files use POSIX `0700`/`0600`; Windows ACLs must be checked by the user. Google grants are encrypted at rest, but client settings, encryption keys and report snapshots are local files, not an OS credential vault. Protect disk/backups and the OS account. Same-account software is inside this trust boundary.
 
 Requested tool/report output is sent to the chat host/model; do not describe the Plugin as completely offline. Never log credential values, callbacks, cookies or provider payloads. Setup assistants must hand off credential entry and stop browser observation until the user finishes.
 
 The legacy multi-user browser adapter and optional Sites transport retain their own deployment/security requirements below. Installing the local Plugin does not deploy them or migrate existing grants. The `.env.local` instructions below apply only to the legacy multi-user adapter; the default local setup writes its own separate profile.
+
+SQLite and D1 persist attempt and provider-call budgets before Google work. Failed attempts count; reconnecting, deleting a connection, cache eviction and process restarts do not reset counters. One owner/channel sync is permitted per fifteen minutes, with at most five sync attempts per tenant/channel and thirty service-wide. Report refreshes share a twenty-per-minute tenant/channel limit and two hundred service-wide. Actual Google requests, including retries and token/channel checks, share fifteen-minute limits of 1,200 per tenant, 900 per channel and 6,000 per service. Twelve provider responses may be in flight, including streaming bodies. Exhaustion returns a fixed 429 error and retry interval without changing authorization or the previous snapshot.
+
+Sites preparation checks the selected root, markers, managed overlay trees and existing ancestors. It prepares an operator-owned temporary sibling tree, validates copied paths, then installs by directory rename; it never writes through mutable starter paths. Symlinked targets are rejected; fresh regular starters remain supported. Operate on a checkout under your own OS account, without concurrent filesystem edits. The D1 adapter requires the bundled provider-budget migration when upgrading a hosted installation.
 
 這是待實際部署驗收的開發版本；合成測試不構成安全認證。
 

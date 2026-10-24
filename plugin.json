@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "youtube-dashboard",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Self-hosted YouTube analytics with user-owned credentials, reports, branding and layouts.",
   "author": {
     "name": "KaiQin04",

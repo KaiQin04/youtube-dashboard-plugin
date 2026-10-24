@@ -1,6 +1,7 @@
 import { AppError } from '../errors.mjs';
 import { assertDate, dateSequence } from './contracts.mjs';
 import { REPORTS } from '../dashboard-catalog.mjs';
+import { isProviderBudgetError } from '../provider-budget.mjs';
 
 const fail = () => new AppError('INVALID_UPSTREAM_DATA', 'Invalid supplemental analytics report.', 502);
 function parse(report, fields, maxRows) {
@@ -41,7 +42,7 @@ export async function readDashboardReports(get, { channelId, startDate, endDate 
         rowLimit: daily ? 31 : 20, truncated: !daily && rows.length > 20,
         coverageNote: daily ? 'Missing days and null values remain unknown.' : 'Top twenty API-returned categories; privacy thresholds, omitted categories and provider lag may affect coverage. Requested end is not an observed watermark.' };
     } catch (error) {
-      if (error instanceof AppError && ['REAUTH_REQUIRED', 'CONNECTION_CHANGED', 'SYNC_BUDGET_EXCEEDED'].includes(error.code)) throw error;
+      if (isProviderBudgetError(error) || error instanceof AppError && ['REAUTH_REQUIRED', 'CONNECTION_CHANGED', 'SYNC_BUDGET_EXCEEDED'].includes(error.code)) throw error;
       output[definition.id] = { ...base, status: 'unavailable', rows: [], code: 'REPORT_UNAVAILABLE', rowLimit: daily ? 31 : 20, truncated: false };
     }
   }

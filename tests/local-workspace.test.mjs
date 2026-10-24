@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { startLocalWorkspace } from '../src/local-workspace.mjs';
 import { googleFixture, CHANNEL_A, NOW } from './helpers.mjs';
 import { defaultLayout } from '../src/layout.mjs';
+import { localBrowser } from './local-browser.mjs';
 
 test('first-run setup stays local, rejects foreign writes, and never returns credential values', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'youtube-local-setup-'));
@@ -15,7 +16,8 @@ test('first-run setup stays local, rejects foreign writes, and never returns cre
   const origin = runtime.url;
   assert.equal((await fetch(origin + '/api/session')).status, 401);
   const home = await fetch(origin + '/');
-  const cookie = home.headers.getSetCookie()[0].split(';')[0];
+  assert.equal(home.headers.getSetCookie().length, 0);
+  const { cookie } = await localBrowser(runtime);
   const session = await (await fetch(origin + '/api/session', { headers: { cookie } })).json();
   assert.equal(session.authMode, 'local');
   assert.equal(session.configurationReady, false);
@@ -41,7 +43,7 @@ test('first-run setup stays local, rejects foreign writes, and never returns cre
 });
 
 async function browser(runtime) {
-  const cookie = (await fetch(runtime.url + '/')).headers.getSetCookie()[0].split(';')[0];
+  const { cookie } = await localBrowser(runtime);
   const session = await (await fetch(runtime.url + '/api/session', { headers: { cookie } })).json();
   return {
     cookie,
@@ -89,7 +91,8 @@ test('one local authorization verifies the channel and preserves user branding a
   await runtime.close(); runtime = await startLocalWorkspace({ directory, port: 0, fetchImpl: google.fetch, now: () => NOW });
   const openingCalls = google.control.calls;
   const opened = await runtime.rpc(message('open_youtube_dashboard'));
-  assert.deepEqual(opened.result.structuredContent, { url: runtime.url, configurationReady: true });
+  assert.equal(new URL(opened.result.structuredContent.url).origin, runtime.url);
+  assert.equal(opened.result.structuredContent.configurationReady, true);
   assert.equal(google.control.calls, openingCalls);
   const saved = (await runtime.rpc(message('get_youtube_dashboard', { connectionId: connection.id }))).result.structuredContent;
   assert.equal(saved.connection.channel.id, CHANNEL_A);

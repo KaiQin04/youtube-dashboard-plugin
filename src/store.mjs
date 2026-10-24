@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { AppError } from './errors.mjs';
+import { providerReservation, requireProviderReservation } from './provider-budget.mjs';
 
 /** Local/self-host storage. SQL always scopes operations to a verified tenant. */
 export class SqliteStore {
@@ -7,6 +8,8 @@ export class SqliteStore {
   constructor(filename) {
     this.#db = new DatabaseSync(filename);
     this.#db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
+      CREATE TABLE IF NOT EXISTS provider_usage (scope TEXT PRIMARY KEY, used INTEGER NOT NULL, reset_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS provider_permits (id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, active INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS connections (
         user_id TEXT NOT NULL, id TEXT NOT NULL, status TEXT NOT NULL,
         channel_id TEXT, channels_json TEXT NOT NULL DEFAULT '[]',
@@ -38,6 +41,11 @@ export class SqliteStore {
       );`);
   }
   close() { this.#db.close(); }
+  reserveProviderWork(args) {
+    const reservation = providerReservation(args);
+    return this.transaction(() => requireProviderReservation(reservation, reservation.statements.map(({ sql, values }) => ({ results: this.#db.prepare(sql).all(...values) }))));
+  }
+  releaseProviderWork(id) { this.#db.prepare('DELETE FROM provider_permits WHERE id=?').run(id); }
   transaction(operation) {
     this.#db.exec('BEGIN IMMEDIATE');
     try { const result = operation(); this.#db.exec('COMMIT'); return result; }

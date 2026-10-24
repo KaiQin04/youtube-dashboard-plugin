@@ -1,6 +1,6 @@
 {
   "name": "youtube-dashboard-plugin",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "Self-hosted YouTube Dashboard Plugin with user-owned credentials, data and branding",

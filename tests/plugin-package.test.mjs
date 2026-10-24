@@ -34,8 +34,8 @@ test('the downloadable Plugin contains the shared core, locked dependency and se
   const [tools, opened] = outputText.trim().split('\n').map(line => JSON.parse(line));
   const entrypoint = tools.result.tools.find(tool => tool.name === 'open_youtube_dashboard');
   assert.deepEqual(entrypoint._meta['openai/ui'].entrypoints, [{ type: 'global' }, { type: 'thread' }]);
-  assert.equal(entrypoint._meta.ui.resourceUri, 'ui://youtube-dashboard/panel-v4.html');
+  assert.equal(entrypoint._meta.ui.resourceUri, 'ui://youtube-dashboard/panel-v5.html');
   assert.equal(opened.result.isError, undefined);
   assert.equal(opened.result.structuredContent.configurationReady, false);
-  assert.match(opened.result.structuredContent.url, /^http:\/\/127\.0\.0\.1:\d+$/);
+  assert.match(opened.result.structuredContent.url, /^http:\/\/127\.0\.0\.1:\d+\/#access=[A-Za-z0-9_-]{43}$/);
 });

@@ -23,8 +23,8 @@
     },
     {
       "file": "src/analytics/youtube.mjs",
-      "currentSha256": "db7e2ff6ba3d140d187567ec995f083b237d3ef3d089e88054e8ce887dabccab",
-      "previousSha256": "4929d91220c6b3e5d2560e1455147d4e0e97ef6622063c2b8a4e5bcf5f9b47d2"
+      "currentSha256": "3e43becb15f5c6362e1e682adf5c098402283ac56bd6064e09eb6a3deb5d112a",
+      "previousSha256": "db7e2ff6ba3d140d187567ec995f083b237d3ef3d089e88054e8ce887dabccab"
     },
     {
       "file": "src/analytics/comments.mjs",
