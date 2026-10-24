@@ -1,0 +1,10 @@
+node_modules/
+outputs/
+.env*
+!.env.example
+*.sqlite*
+*.db*
+*.tgz
+coverage/
+.DS_Store
+.local/

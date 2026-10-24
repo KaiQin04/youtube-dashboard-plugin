@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createApp } from '../src/app.mjs';
+import { SqliteStore } from '../src/store.mjs';
+import { DashboardService } from '../src/service.mjs';
+import { identities, configuration, googleFixture, ORIGIN, CHANNEL_A, NOW } from './helpers.mjs';
+
+test('HTTP OAuth cookie handoff, MCP identity and data calls preserve the tenant boundary',async t=>{
+  const store=new SqliteStore(':memory:');t.after(()=>store.close());
+  const auth=await identities(),google=googleFixture();
+  const service=new DashboardService({store,config:configuration(),fetchImpl:google.fetch,now:()=>NOW});
+  const app=createApp({service,authenticate:auth.authenticate,publicOrigin:ORIGIN,issuer:'https://identity.example'});
+  const a=await auth.token(),b=await auth.token('user-b');
+  const call=(path,token,body)=>app(new Request(ORIGIN+path,{method:body?'POST':'GET',headers:{...(token?{authorization:`Bearer ${token}`} : {}),...(body?{'content-type':'application/json',origin:ORIGIN}: {})},...(body?{body:JSON.stringify(body)}:{})}));
+  assert.equal((await call('/api/connections')).status,401);
+  const startResponse=await call('/oauth/google/start',a,{});assert.equal(startResponse.status,200);
+  const start=await startResponse.json();assert.equal('browserNonce' in start,false);
+  const cookie=startResponse.headers.get('set-cookie');assert.match(cookie,/HttpOnly; Secure; SameSite=Lax/);
+  const state=new URL(start.authorizationUrl).searchParams.get('state');
+  const callback=`${ORIGIN}/oauth/google/callback?state=${state}&code=synthetic-code`;
+  assert.equal((await app(new Request(callback))).status,400);
+  const done=await app(new Request(callback,{headers:{cookie:cookie.split(';')[0]}}));
+  assert.equal(done.status,303);assert.equal(done.headers.get('location'),'/connected');
+  assert.equal((await call(`/api/connections/${start.connectionId}/channel`,b,{channelId:CHANNEL_A})).status,404);
+  assert.equal((await call(`/api/connections/${start.connectionId}/channel`,a,{channelId:CHANNEL_A})).status,200);
+  const rpc=(token,name,args)=>call('/mcp',token,{jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}});
+  const sync=await rpc(a,'refresh_youtube_data',{connectionId:start.connectionId,startDate:'2026-10-20',endDate:'2026-10-20'});assert.equal((await sync.json()).result.isError,undefined);
+  const data=(await (await rpc(a,'get_youtube_dashboard',{connectionId:start.connectionId})).json()).result.structuredContent;
+  assert.equal(data.hasData,true);assert.equal(data.channel.id,CHANNEL_A);assert.equal(data.summary.views,10);
+  const foreign=(await (await rpc(b,'get_youtube_dashboard',{connectionId:start.connectionId})).json()).result;
+  assert.equal(foreign.isError,true);assert.equal(foreign.structuredContent.error.code,'NOT_FOUND');
+  const injected=(await (await rpc(b,'get_youtube_dashboard',{connectionId:start.connectionId,userId:auth.a.id})).json()).result;
+  assert.equal(injected.isError,true);
+  assert.ok(google.control.tokens.every(token=>!JSON.stringify(data).includes(token)));
+  const resource=await call('/mcp',a,{jsonrpc:'2.0',id:2,method:'resources/read',params:{uri:'ui://youtube-dashboard/panel-v1.html'}});
+  const panel=(await resource.json()).result.contents[0];assert.equal(panel.mimeType,'text/html;profile=mcp-app');assert.match(panel.text,/ui\/initialize/);
+  assert.equal((await app(new Request(ORIGIN+'/api/connections',{headers:{'oai-authenticated-user-id':auth.a.id}}))).status,401);
+});

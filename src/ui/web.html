@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YouTube Dashboard · 個人工作台</title><link rel="stylesheet" href="/assets/web.css"><script src="/assets/web.js" defer></script></head>
+<body>
+<div id="demo-banner" class="demo" hidden>本機合成登入與資料示範 · 沒有連接 Google，也沒有使用現有憑證。</div>
+<header class="shell masthead"><a class="brand" href="/"><span data-brand-icon></span><span><span data-brand-name>YouTube Dashboard</span><small data-brand-subtitle>YOUR CHANNEL, YOUR WORKSPACE</small></span></a><span class="finish">Cold Porcelain</span></header>
+<main class="shell">
+<p id="notice" class="notice" role="status" aria-live="polite" hidden></p>
+<p id="setup-status" class="notice" role="status" hidden>網站尚未完成 YouTube 連線設定。目前可登入與查看說明，暫時無法授權或同步。</p>
+<section id="signed-out" class="welcome" hidden>
+  <div><span class="eyebrow">A SPACE FOR YOUR CHANNEL</span><h1>讓每一份數據，<br>回到你的工作台。</h1><p class="lead">連接自己的 YouTube 頻道，檢視最近 28 天成效。<br>從配色到資料區塊，整理成適合你的版面。</p><form id="legacy-login" action="/auth/login" method="post"><button class="primary login" type="submit"><span aria-hidden="true">G</span>使用 Google 登入</button></form><a id="sites-login" class="primary login" href="/signin-with-chatgpt?return_to=%2F" hidden>使用 ChatGPT 登入</a><p class="fine" id="login-note">登入只用來辨識帳號。下一步才會要求 YouTube 唯讀授權。</p></div>
+  <ol class="steps"><li><span>01</span><div><h2>登入你的帳號</h2><p>每個帳號有獨立的頻道清單與資料。</p></div></li><li><span>02</span><div><h2>選擇已授權的頻道</h2><p>確認實際頻道 ID，再開始同步。</p></div></li><li><span>03</span><div><h2>打造自己的儀表板</h2><p>選主題、調整數字卡與圖表。版面只屬於這個帳號的頻道。</p></div></li></ol>
+</section>
+<section id="workspace" hidden>
+  <div class="workspace-heading"><div><span class="eyebrow">CHANNEL WORKSPACE</span><h1>我的頻道</h1><p class="muted" id="account"></p></div><button id="logout" class="quiet" type="button">登出</button></div>
+  <section class="connections-box"><div class="section-heading"><div><h2>已連接的頻道</h2><p>登入與 YouTube 授權是兩個步驟；同步後才會顯示分析資料。</p></div><button id="connect" class="primary" type="button">連接 YouTube 頻道</button></div><div id="privacy-notice" hidden><p class="fine">同步可能包含你授權存取的非公開影片標題、ID 與發布資訊。使用 Plugin 工具時，回傳資料會提供給 ChatGPT 模型處理。請先閱讀<a href="/privacy">隱私說明</a>。</p><label><input id="privacy-consent" type="checkbox">我已閱讀並同意隱私說明，了解上述資料範圍與用途。</label></div><div id="connections" class="connection-list"></div></section>
+  <section id="dashboard-area" hidden><div class="dashboard-heading"><h2>頻道儀表板</h2><span class="fine">依帳號與頻道分別儲存版面</span></div><iframe id="panel" title="YouTube 頻道儀表板" referrerpolicy="no-referrer"></iframe></section>
+</section>
+<p id="loading" class="loading" role="status">正在確認登入狀態…</p>
+<footer><span>資料直接來自已授權的 YouTube API</span><span>分析資料可能延遲；不是 Studio 即時估計值。</span><span id="sites-policy-links" hidden><a href="/privacy">隱私說明</a> · <a href="/terms">使用條款</a></span></footer>
+</main>
+</body></html>

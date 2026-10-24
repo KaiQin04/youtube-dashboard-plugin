@@ -1,0 +1,22 @@
+<dialog id="layout-dialog" aria-labelledby="layout-title">
+      <form id="layout-form">
+        <header class="custom-dialog-heading"><div><p class="custom-eyebrow">Make it yours</p><h2 id="layout-title">自訂你的工作台</h2><p>主題、版面與顯示名稱。儲存後只套用這個私人頻道。</p></div><button type="button" class="button button-outline" id="close-layout" aria-label="關閉自訂介面">✕</button></header>
+        <div class="layout-scroll"><fieldset id="layout-fields">
+          <nav class="editor-tabs" aria-label="自訂選項"><button type="button" id="tab-appearance" aria-pressed="true">主題與名稱</button><button type="button" id="tab-widgets" aria-pressed="false">版面與區塊</button><button type="button" id="tab-sources" aria-pressed="false">資料說明</button></nav>
+          <section id="editor-appearance"><div class="branding-fields"><div class="custom-field field"><label for="header-name">頁首名稱</label><input id="header-name" class="cp-input" maxlength="80" placeholder="留白使用預設名稱"></div><div class="custom-field field"><label for="header-icon">頁首圖標</label><select id="header-icon" class="cp-input"></select></div><div class="custom-field field"><label for="header-image">上傳圖標</label><input id="header-image" type="file" accept="image/png,image/jpeg,image/webp"><p class="custom-note small muted">PNG、JPEG 或 WebP，最大 2 MB；會轉成小型 PNG，儲存後網站與 Plugin 面板一致。</p></div></div>
+            <div class="appearance-fields"><div class="custom-field"><label for="header-subtitle">頁首副標題</label><input id="header-subtitle" maxlength="80" placeholder="留白使用「內容研究工作台」" /></div><div class="custom-field"><label><input type="checkbox" id="show-header-subtitle" checked /> 顯示頁首副標題</label></div></div>
+            <div class="appearance-fields"><div class="custom-field"><label for="dashboard-title">儀表板名稱</label><input id="dashboard-title" maxlength="80" placeholder="留白使用「頻道總覽」" /></div><div class="custom-field"><label for="layout-name-input">版面名稱</label><input id="layout-name-input" maxlength="80" placeholder="例如：每週內容回顧" /></div></div>
+            <p class="custom-note">名稱只用於此儀表板，不會修改 YouTube 頻道、影片或指標定義。</p>
+            <div class="appearance-fields"><div class="custom-field"><label for="layout-mode">明暗模式</label><select id="layout-mode"><option value="light">淺色</option><option value="dark">深色</option><option value="auto">跟隨系統</option></select></div><div class="custom-field"><label for="layout-typography">標題字體</label><select id="layout-typography"><option value="serif">襯線字體</option><option value="sans">無襯線字體</option></select></div><div class="custom-field"><label for="layout-density">資訊密度</label><select id="layout-density"><option value="comfortable">舒適</option><option value="compact">緊湊</option></select></div><div class="custom-field"><label for="layout-columns">排列方式</label><select id="layout-columns"><option value="auto">依區塊寬度</option><option value="one">單欄</option><option value="two">雙欄</option></select></div></div>
+            <h3>選擇主題</h3><div id="theme-grid" class="theme-grid" role="group" aria-label="主題選擇"></div>
+          </section>
+          <section id="editor-widgets" hidden>
+            <div class="custom-field"><label for="layout-preset">版面範本</label><select id="layout-preset"></select></div>
+            <div class="builder-add"><div class="custom-field"><label for="add-widget">新增資料區塊</label><select id="add-widget"></select></div><button type="button" class="button button-primary" id="add-widget-button">新增區塊</button></div>
+            <p class="custom-note"><span id="widget-count"></span> · 上移、下移調整順序；小螢幕會自動改為單欄。</p><ol id="widget-list" class="widget-list"></ol>
+          </section>
+          <section id="editor-sources" hidden><h3>可自訂的資料</h3><ul id="layout-data-catalog"></ul><h3>其他 API 能力與限制</h3><ul id="report-limitations"></ul><p>每份報表分別標示查詢期間與資料狀態；缺值不補零，分類加總不取代頻道總計。切換主題與版面只讀保存資料，不查詢 Google 或新增權限。</p><p>主題包含 Cold Porcelain 與 15 種 claude-skins 改編色票；全部由本站提供，不載入外部樣式。</p></section>
+        </fieldset></div>
+        <footer class="custom-dialog-footer"><p id="layout-message" role="status"></p><div><button type="button" class="button button-outline" id="reset-layout">恢復預設</button><button type="button" class="button button-outline" id="cancel-layout">取消</button><button type="submit" class="button button-primary" id="save-layout">儲存介面</button></div></footer>
+      </form>
+    </dialog>

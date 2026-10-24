@@ -1,0 +1,39 @@
+{
+  "method": "Source module hashes for release verification.",
+  "modules": [
+    {
+      "file": "src/analytics/contracts.mjs",
+      "currentSha256": "01646b9ea6aaa244e7f9d8e19de3cc5922047d600a51844d6b7173dd5dd0b72a"
+    },
+    {
+      "file": "src/analytics/metrics.mjs",
+      "currentSha256": "9a520594b1d59fefafb2c80cc25a69affaa574536023f25045db07ba3e20b259"
+    },
+    {
+      "file": "src/analytics/repository.mjs",
+      "currentSha256": "32e2db0aecd12778bdb03c6d66f087c3db291a450fe8d05e5cbdd3754c88886b"
+    },
+    {
+      "file": "src/analytics/native-summary.mjs",
+      "currentSha256": "94546703162a9e84594eb38eaaa2bc17f2394451213a76f3950f4ad8f8e7e2bf"
+    },
+    {
+      "file": "src/analytics/freshness.mjs",
+      "currentSha256": "da07afafd5fd200944774f4fd5f99f9c4eb8974019b1ed8d248499c213953db5"
+    },
+    {
+      "file": "src/analytics/youtube.mjs",
+      "currentSha256": "db7e2ff6ba3d140d187567ec995f083b237d3ef3d089e88054e8ce887dabccab",
+      "previousSha256": "4929d91220c6b3e5d2560e1455147d4e0e97ef6622063c2b8a4e5bcf5f9b47d2"
+    },
+    {
+      "file": "src/analytics/comments.mjs",
+      "currentSha256": "5897da0262d2b12dba753feebcea862a6d9262b6f3573e62787bdd5df10f7edf"
+    },
+    {
+      "file": "src/analytics/export.mjs",
+      "currentSha256": "5826f168e19f4ed027ee6a29c691aa441989c4326aa2af50a32c515dbfafee39",
+      "previousSha256": "79746712b5f67125a2ba488306cdf2c7eab6bdd2dfb75a535eeab1c59cf3b9a9"
+    }
+  ]
+}

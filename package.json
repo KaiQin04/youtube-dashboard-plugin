@@ -1,0 +1,60 @@
+{
+  "name": "youtube-dashboard-plugin",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted YouTube Dashboard Plugin with user-owned credentials, data and branding",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node scripts/check-release.mjs",
+    "demo": "node examples/local-demo.mjs",
+    "pack:check": "npm pack --dry-run --ignore-scripts",
+    "demo:auth": "node examples/auth-demo.mjs",
+    "start:local": "node scripts/local-plugin.mjs",
+    "start:web": "node --env-file=.env.local scripts/start-local.mjs",
+    "setup": "node scripts/local-plugin.mjs",
+    "start:mcp": "node scripts/local-plugin.mjs --stdio",
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "build:panel": "node scripts/build-panel.mjs",
+    "pretest": "node scripts/build-panel.mjs --check"
+  },
+  "dependencies": {
+    "jose": "6.2.13"
+  },
+  "files": [
+    "src/",
+    "tests/",
+    "docs/",
+    "plugin/",
+    "examples/",
+    "scripts/",
+    ".env.example",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "SECURITY.md",
+    "third-party/",
+    "sites/",
+    "plugin.json",
+    "mcp.json",
+    "skills/",
+    "assets/",
+    "README.en.md",
+    ".agents/plugins/marketplace.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KaiQin04/youtube-dashboard-plugin.git"
+  },
+  "homepage": "https://github.com/KaiQin04/youtube-dashboard-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/KaiQin04/youtube-dashboard-plugin/issues"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.0"
+  }
+}

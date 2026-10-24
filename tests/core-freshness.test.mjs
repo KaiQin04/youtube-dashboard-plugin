@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {freshness} from '../src/analytics/freshness.mjs';
+test('freshness separates observation age, provider lag and holes',()=>{const x=freshness({coverage:{requestedStartDate:'2026-10-19',requestedEndDate:'2026-10-21'},completeThrough:'2026-10-20',lastSyncedAt:'2026-10-23T03:00:00Z',channelDailyMetrics:[{date:'2026-10-19'},{date:'2026-10-21'}]},{startDate:'2026-10-19',endDate:'2026-10-21',now:new Date('2026-10-23T03:10:00Z')});assert.equal(x.availableThrough,'2026-10-21');assert.equal(x.snapshotAgeSeconds,600);assert.equal(x.reportLagDays,1);assert.deepEqual(x.missingDates,['2026-10-20']);assert.equal(x.realTime,false);assert.equal(x.refreshSuggested,false)});
+test('missing data never claims current availability',()=>{const x=freshness(null,{now:new Date('2026-10-23T03:10:00Z')});assert.equal(x.availableThrough,null);assert.equal(x.reportLagDays,null);assert.equal(x.refreshSuggested,true)});
+
+test('recent historical sync does not claim latest window was refreshed',()=>{const x=freshness({lastSyncedAt:'2026-10-23T03:09:00Z',coverage:{requestedStartDate:'2026-09-01',requestedEndDate:'2026-09-30'}},{startDate:'2026-10-01',endDate:'2026-10-21',now:new Date('2026-10-23T03:10:00Z')});assert.equal(x.refreshSuggested,true);assert.equal(x.requestedWindowPreviouslyFetched,false)});

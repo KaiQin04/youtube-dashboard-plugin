@@ -1,0 +1,14 @@
+YouTube Dashboard Plugin is distributed under the MIT License.
+The runtime dependency jose is distributed under its own MIT license.
+
+Cold Porcelain dashboard styling follows the user-provided design system.
+
+Theme palette constants in src/ui/skin-palettes.json are adapted from
+KaiQin04/claude-skins (fork of hellosverre/claude-skins), commit
+917b5b6117a432e274e22279f80e22ce7ac3db06. Copyright (c) 2026 hellosverre.
+The MIT license is reproduced in third-party/claude-skins.LICENSE.
+Only palette constants and labels are used; no upstream hook code runs.
+See docs/theme-provenance.md for dashboard palette adjustments.
+
+YouTube, Google, ChatGPT and OpenAI are trademarks of their respective owners.
+This is an independent project, not an official Google or OpenAI product.
